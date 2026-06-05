@@ -1422,20 +1422,27 @@ var ReaderAI = {
   },
 
   responseEnvelopeError(json, text) {
-    let message = this.responseErrorText(json, text);
-    if (!message) {
+    if (!json || typeof json != "object") {
       return null;
     }
+    if (json.error) {
+      return { status: Number(json.status || 0), message: this.responseErrorText(json, text) };
+    }
+    let explicitMessage = String(json.detail || json.message || "");
+    let message = explicitMessage || "";
     let statusMatch = message.match(/(?:status|status code|状态码)[:：]?\s*(\d{3})/i);
-    let status = statusMatch ? Number(statusMatch[1]) : 0;
-    if (json?.error || status >= 400 || /请求失败|request failed|bad request|unauthorized|forbidden|invalid|error/i.test(message)) {
+    let status = Number(json.status_code || json.statusCode || json.code || (statusMatch ? statusMatch[1] : 0));
+    if (status >= 400 || (explicitMessage && /请求失败|request failed|bad request|unauthorized|forbidden|invalid|error/i.test(explicitMessage))) {
       return { status, message };
     }
     return null;
   },
 
   responseErrorText(json, text) {
-    return String(json?.error?.message || json?.detail || json?.message || text || "");
+    if (json?.error) {
+      return String(json.error.message || json.error || "");
+    }
+    return String(json?.detail || json?.message || text || "");
   },
 
   describeAPIError({ status, statusText, endpoint, apiType, model, json, text }) {
@@ -1525,8 +1532,23 @@ var ReaderAI = {
     if (typeof json.output_text == "string" && json.output_text.trim()) {
       return json.output_text.trim();
     }
+    if (typeof json.text == "string" && json.text.trim()) {
+      return json.text.trim();
+    }
+    if (typeof json.response == "string" && json.response.trim()) {
+      return json.response.trim();
+    }
+    if (typeof json.content == "string" && json.content.trim()) {
+      return json.content.trim();
+    }
     let texts = [];
     for (let item of json.output || []) {
+      if (typeof item.text == "string") {
+        texts.push(item.text);
+      }
+      if (typeof item.output_text == "string") {
+        texts.push(item.output_text);
+      }
       for (let content of item.content || []) {
         if (typeof content.text == "string") {
           texts.push(content.text);
@@ -1536,7 +1558,36 @@ var ReaderAI = {
         }
       }
     }
+    if (!texts.length) {
+      texts.push(...this.findResponseTextCandidates(json));
+    }
     return texts.join("\n").trim();
+  },
+
+  findResponseTextCandidates(value, path = "") {
+    let candidates = [];
+    if (!value || typeof value != "object") {
+      return candidates;
+    }
+    let answerKeys = /(?:^|\.)(output_text|text|content|answer|response)$/;
+    let skipKeys = /(?:instructions|input|metadata|usage|error|detail|message|created_at|completed_at|id|model|object|status)$/;
+    for (let [key, child] of Object.entries(value)) {
+      let childPath = path ? `${path}.${key}` : key;
+      if (typeof child == "string") {
+        if (answerKeys.test(childPath) && child.trim() && !skipKeys.test(key)) {
+          candidates.push(child.trim());
+        }
+      }
+      else if (Array.isArray(child)) {
+        for (let index = 0; index < child.length; index++) {
+          candidates.push(...this.findResponseTextCandidates(child[index], `${childPath}.${index}`));
+        }
+      }
+      else if (child && typeof child == "object" && !skipKeys.test(key)) {
+        candidates.push(...this.findResponseTextCandidates(child, childPath));
+      }
+    }
+    return candidates;
   },
 
   async getContextItems(item) {

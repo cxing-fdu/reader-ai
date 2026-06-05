@@ -84,6 +84,23 @@ assert(diagnostic.includes("Model: unavailable-model"), "Provider diagnostic smo
 assert(ReaderAI.isResponsesListInputError({ detail: "Input must be a list" }, ""), "Responses list-input detection smoke test failed");
 const envelope = ReaderAI.responseEnvelopeError({ detail: "upstream failed, status: 400, Input must be a list" }, "");
 assert(envelope?.status === 400, "Provider envelope error smoke test failed");
+const completedEnvelope = ReaderAI.responseEnvelopeError({ status: "completed", error: null, instructions: "error is a normal word here" }, "");
+assert(!completedEnvelope, "Completed response envelope was misclassified as an error");
+const extractedResponse = ReaderAI.extractResponsesText({
+  id: "resp_test",
+  object: "response",
+  status: "completed",
+  error: null,
+  output: [
+    {
+      type: "message",
+      content: [
+        { type: "output_text", text: "你好，我能正常回答。" },
+      ],
+    },
+  ],
+});
+assert(extractedResponse === "你好，我能正常回答。", "Responses text extraction smoke test failed");
 
 ReaderAI.pluginID = "reader-ai@test";
 ReaderAI.pref = key => ({
