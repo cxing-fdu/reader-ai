@@ -1195,29 +1195,23 @@ var ReaderAI = {
       };
     }
 
-    let response = await this.fetchWithTimeout(endpoint, {
-      method: "POST",
+    let request = {
       headers: {
         "Content-Type": "application/json",
         "Authorization": `Bearer ${apiKey}`,
       },
       body: JSON.stringify(payload),
       signal: options.signal,
-    });
+    };
 
-    let text = await response.text();
+    let response = await this.requestProvider(endpoint, request);
+
+    let text = response.text;
     if (!response.ok && apiType == "responses" && /temperature/i.test(text)) {
       delete payload.temperature;
-      response = await this.fetchWithTimeout(endpoint, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify(payload),
-        signal: options.signal,
-      });
-      text = await response.text();
+      request.body = JSON.stringify(payload);
+      response = await this.requestProvider(endpoint, request);
+      text = response.text;
     }
     let json = null;
     try {
@@ -1242,6 +1236,84 @@ var ReaderAI = {
       throw new Error(this.describeEmptyModelResponse({ endpoint, apiType, model, text }));
     }
     return content;
+  },
+
+  async requestProvider(endpoint, request, timeoutMs = 90000) {
+    if (Zotero.HTTP?.request) {
+      return this.zoteroHTTPRequest(endpoint, request, timeoutMs);
+    }
+
+    let response = await this.fetchWithTimeout(endpoint, {
+      method: "POST",
+      headers: request.headers,
+      body: request.body,
+      signal: request.signal,
+    }, timeoutMs);
+    return {
+      ok: response.ok,
+      status: response.status,
+      statusText: response.statusText,
+      text: await response.text(),
+    };
+  },
+
+  async zoteroHTTPRequest(endpoint, request, timeoutMs = 90000) {
+    if (request.signal?.aborted) {
+      throw new Error("请求已停止。");
+    }
+
+    let aborted = false;
+    let timedOut = false;
+    let abortReject = null;
+    let abortPromise = new Promise((_, reject) => {
+      abortReject = reject;
+    });
+    let timer = setTimeout(() => {
+      timedOut = true;
+      abortReject(new Error(`模型请求超过 ${Math.round(timeoutMs / 1000)} 秒没有返回。请检查网络、API 地址或服务商状态。`));
+    }, timeoutMs);
+    let abortFromExternal = () => {
+      aborted = true;
+      abortReject(new Error("请求已停止。"));
+    };
+
+    if (request.signal?.addEventListener) {
+      request.signal.addEventListener("abort", abortFromExternal, { once: true });
+    }
+
+    try {
+      let xhr = await Promise.race([
+        Zotero.HTTP.request("POST", endpoint, {
+          headers: request.headers,
+          body: request.body,
+          responseType: "text",
+          timeout: timeoutMs,
+        }),
+        abortPromise,
+      ]);
+      let status = Number(xhr.status || 0);
+      return {
+        ok: status >= 200 && status < 300,
+        status,
+        statusText: xhr.statusText || "",
+        text: typeof xhr.responseText == "string" ? xhr.responseText : String(xhr.response || ""),
+      };
+    }
+    catch (error) {
+      if (aborted || this.isAbortError(error)) {
+        throw error;
+      }
+      if (timedOut) {
+        throw error;
+      }
+      throw new Error(this.describeNetworkError(error));
+    }
+    finally {
+      clearTimeout(timer);
+      if (request.signal?.removeEventListener) {
+        request.signal.removeEventListener("abort", abortFromExternal);
+      }
+    }
   },
 
   async fetchWithTimeout(endpoint, init, timeoutMs = 90000) {
@@ -1378,6 +1450,15 @@ var ReaderAI = {
       return message;
     }
     return `发生错误：${message}\n\n请打开“设置”点“复制排障信息”，把不含密钥的内容发给我继续定位。`;
+  },
+
+  describeNetworkError(error) {
+    let message = error?.message || String(error);
+    return [
+      "Zotero 没有成功连到 API 服务。",
+      message,
+      "这通常是 API 地址、接口类型、网络代理、证书或服务商可用性问题。请先在“设置”里点“测试模型”；如果浏览器能访问但 Zotero 不能访问，优先检查 Zotero 是否走了系统代理。",
+    ].join("\n");
   },
 
   extractChatText(json) {

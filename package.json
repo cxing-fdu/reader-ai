@@ -1,6 +1,6 @@
 {
   "name": "zotero-reader-ai",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "private": true,
   "description": "A Zotero reader side panel for document-aware AI chat.",
   "license": "MIT",

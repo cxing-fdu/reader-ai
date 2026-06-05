@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.2
+
+- Uses Zotero's native HTTP request API before falling back to browser `fetch`, improving compatibility with Zotero's plugin network environment.
+- Improves diagnostics for network-layer failures that appear as `NetworkError when attempting to fetch resource`.
+
 ## 0.1.1
 
 - Fixes a chat-send failure mode where the user message could appear without any visible assistant response.
