@@ -1,0 +1,19 @@
+{
+  "manifest_version": 2,
+  "name": "Reader AI",
+  "version": "0.1.0",
+  "description": "A Zotero reader side panel for document-aware AI chat.",
+  "author": "cxing-fdu",
+  "icons": {
+    "48": "icons/reader-ai-48.png",
+    "96": "icons/reader-ai-96.png"
+  },
+  "applications": {
+    "zotero": {
+      "id": "reader-ai@cxing-fdu.github",
+      "update_url": "https://example.com/reader-ai/update.json",
+      "strict_min_version": "7.9.9",
+      "strict_max_version": "10.9.9"
+    }
+  }
+}

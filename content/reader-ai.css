@@ -1,0 +1,371 @@
+.reader-ai-root {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  min-height: 420px;
+  height: min(78vh, 820px);
+  color: var(--fill-primary, #1f2328);
+  font: menu;
+}
+
+.reader-ai-root * {
+  box-sizing: border-box;
+}
+
+.reader-ai-toolbar,
+.reader-ai-composer,
+.reader-ai-settings-grid,
+.reader-ai-actions,
+.reader-ai-settings-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.reader-ai-toolbar {
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: space-between;
+}
+
+.reader-ai-title {
+  flex: 1 1 150px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+.reader-ai-toolbar .reader-ai-actions {
+  flex: 0 1 auto;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.reader-ai-messages {
+  flex: 1;
+  min-height: 180px;
+  overflow: auto;
+  padding: 10px;
+  border: 1px solid #d0d7de;
+  border-radius: 6px;
+  background: linear-gradient(#ffffff, #fbfcfd);
+}
+
+.reader-ai-message {
+  max-width: 94%;
+  margin: 0 0 10px;
+  padding: 9px 10px;
+  border-radius: 8px;
+  line-height: 1.42;
+  white-space: pre-wrap;
+  box-shadow: 0 1px 2px rgba(31, 35, 40, 0.05);
+}
+
+.reader-ai-message.user {
+  margin-left: auto;
+  background: #eaf2ff;
+}
+
+.reader-ai-message.assistant {
+  margin-right: auto;
+  background: #f2fbf8;
+  border: 1px solid #c5e7db;
+}
+
+.reader-ai-message.system {
+  max-width: 100%;
+  color: #57606a;
+  background: transparent;
+  border: 1px dashed #afb8c1;
+  box-shadow: none;
+}
+
+.reader-ai-message p {
+  margin: 0 0 8px;
+  white-space: normal;
+}
+
+.reader-ai-message p:last-child {
+  margin-bottom: 0;
+}
+
+.reader-ai-heading {
+  margin: 10px 0 6px;
+  font-weight: 700;
+}
+
+.reader-ai-heading:first-child {
+  margin-top: 0;
+}
+
+.reader-ai-message blockquote {
+  margin: 6px 0;
+  padding: 4px 0 4px 9px;
+  border-left: 3px solid #8bc6ad;
+  color: #57606a;
+  white-space: normal;
+}
+
+.reader-ai-list-item {
+  margin: 4px 0;
+  padding-left: 14px;
+  position: relative;
+  white-space: normal;
+}
+
+.reader-ai-list-item::before {
+  content: "";
+  position: absolute;
+  left: 2px;
+  top: 0.68em;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #1f9d78;
+}
+
+.reader-ai-list-item.ordered::before {
+  display: none;
+}
+
+.reader-ai-list-item.ordered {
+  padding-left: 0;
+}
+
+.reader-ai-message pre {
+  max-width: 100%;
+  overflow: auto;
+  margin: 7px 0;
+  padding: 7px;
+  border-radius: 6px;
+  background: #24292f;
+  color: #f6f8fa;
+  white-space: pre;
+}
+
+.reader-ai-message code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
+}
+
+.reader-ai-table-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(78px, 1fr));
+  gap: 1px;
+  margin: 2px 0;
+  overflow: hidden;
+  border: 1px solid #d0d7de;
+  border-radius: 5px;
+  background: #d0d7de;
+  white-space: normal;
+}
+
+.reader-ai-table-row span {
+  min-width: 0;
+  padding: 4px 6px;
+  background: #ffffff;
+  overflow-wrap: anywhere;
+}
+
+.reader-ai-input {
+  flex: 1;
+  min-width: 0;
+  min-height: 64px;
+  resize: vertical;
+  padding: 8px;
+  border: 1px solid #d0d7de;
+  border-radius: 6px;
+  background: Canvas;
+  color: CanvasText;
+  font: menu;
+}
+
+.reader-ai-button {
+  min-height: 28px;
+  padding: 4px 8px;
+  border: 1px solid #d0d7de;
+  border-radius: 6px;
+  background: ButtonFace;
+  color: ButtonText;
+  font: menu;
+  cursor: pointer;
+}
+
+.reader-ai-button.primary {
+  border-color: #2f6fed;
+  background: #2f6fed;
+  color: #fff;
+}
+
+.reader-ai-button.subtle {
+  background: #f6f8fa;
+}
+
+.reader-ai-button:disabled,
+.reader-ai-input:disabled {
+  opacity: 0.55;
+}
+
+.reader-ai-settings {
+  display: none;
+  padding: 8px;
+  border: 1px solid #d0d7de;
+  border-radius: 6px;
+  background: #f6f8fa;
+}
+
+.reader-ai-settings.open,
+.reader-ai-context-panel.open {
+  display: block;
+}
+
+.reader-ai-context-panel {
+  display: none;
+  padding: 8px;
+  border: 1px solid #d0d7de;
+  border-radius: 6px;
+  background: #f6f8fa;
+}
+
+.reader-ai-context-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 5px;
+}
+
+.reader-ai-context-title {
+  font-weight: 600;
+}
+
+.reader-ai-context-body {
+  color: #57606a;
+  font-size: 12px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+}
+
+.reader-ai-context-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 2px 0;
+  white-space: normal;
+}
+
+.reader-ai-context-row strong {
+  min-width: 0;
+  max-width: 68%;
+  overflow: hidden;
+  color: #1f2328;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.reader-ai-context-warning {
+  margin-top: 6px;
+  padding: 6px 7px;
+  border-left: 3px solid #d29922;
+  border-radius: 4px;
+  background: #fff8c5;
+  color: #5f4100;
+  white-space: normal;
+}
+
+.reader-ai-context-subtitle {
+  margin: 10px 0 5px;
+  color: #1f2328;
+  font-weight: 600;
+}
+
+.reader-ai-context-excerpt {
+  margin-top: 6px;
+  padding: 7px;
+  border: 1px solid #d0d7de;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #57606a;
+  white-space: normal;
+}
+
+.reader-ai-context-excerpt.anchored {
+  border-color: #8bc6ad;
+  background: #f2fbf8;
+}
+
+.reader-ai-context-excerpt.figure {
+  border-color: #9bb6df;
+  background: #f4f8ff;
+}
+
+.reader-ai-context-excerpt-label {
+  margin-bottom: 4px;
+  color: #1f2328;
+  font-weight: 600;
+}
+
+.reader-ai-settings-grid {
+  flex-direction: column;
+}
+
+.reader-ai-settings-actions {
+  flex-wrap: wrap;
+}
+
+.reader-ai-field {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.reader-ai-field label {
+  color: #57606a;
+  font-size: 12px;
+}
+
+.reader-ai-field input,
+.reader-ai-field select,
+.reader-ai-field textarea {
+  width: 100%;
+  min-width: 0;
+  padding: 5px 6px;
+  border: 1px solid #d0d7de;
+  border-radius: 5px;
+  background: Canvas;
+  color: CanvasText;
+  font: menu;
+}
+
+.reader-ai-followups {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin: -4px 0 10px;
+  padding-left: 4px;
+}
+
+.reader-ai-followups .reader-ai-button {
+  min-height: 24px;
+  padding: 2px 7px;
+  color: #57606a;
+  font-size: 12px;
+}
+
+.reader-ai-status {
+  min-height: 18px;
+  color: #57606a;
+  font-size: 12px;
+}
+
+.reader-ai-selection-button {
+  padding: 3px 7px;
+  border: 1px solid #d0d7de;
+  border-radius: 5px;
+  background: ButtonFace;
+  color: ButtonText;
+  font: menu;
+}

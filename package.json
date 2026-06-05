@@ -1,0 +1,11 @@
+{
+  "name": "zotero-reader-ai",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A Zotero reader side panel for document-aware AI chat.",
+  "scripts": {
+    "check": "node build/check.js",
+    "prebuild": "npm run check",
+    "build": "node build/build-xpi.js"
+  }
+}

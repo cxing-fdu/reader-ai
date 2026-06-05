@@ -1,0 +1,15 @@
+# Build artifacts
+dist/*.xpi
+
+# Local/editor noise
+.DS_Store
+*.log
+*.tmp
+
+# Local secrets or ad-hoc env files
+.env
+.env.*
+
+# Zotero local profiles should never be copied into this repo
+Profiles/
+*.default/
