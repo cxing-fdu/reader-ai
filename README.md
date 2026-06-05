@@ -1,8 +1,14 @@
 # Reader AI for Zotero
 
+[![Release](https://img.shields.io/github/v/release/cxing-fdu/reader-ai?label=release)](https://github.com/cxing-fdu/reader-ai/releases/latest)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+
 Reader AI adds a document-aware AI chat section to the Zotero 7/8/9 item pane and PDF reader side pane.
 
 Publisher: cxing-fdu
+
+Latest release: [v0.1.2](https://github.com/cxing-fdu/reader-ai/releases/tag/v0.1.2)  
+Download: [reader-ai-0.1.2.xpi](https://github.com/cxing-fdu/reader-ai/releases/download/v0.1.2/reader-ai-0.1.2.xpi)
 
 ## What it does
 
