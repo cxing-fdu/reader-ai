@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "Reader AI",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A Zotero reader side panel for document-aware AI chat.",
   "author": "cxing-fdu",
   "icons": {

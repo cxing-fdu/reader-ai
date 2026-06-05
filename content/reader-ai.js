@@ -481,23 +481,36 @@ var ReaderAI = {
     let sendButton = root.querySelector(".reader-ai-send");
     let stopButton = root.querySelector(".reader-ai-stop");
     let history = this.historyByItemID.get(view.itemID) || [];
-    if (appendUser) {
-      history.push({ role: "user", content: question });
-      messagesEl.append(this.messageNode(root.ownerDocument, "user", question));
-    }
-    if (options.input) {
-      options.input.value = "";
-      this.draftByItemID.delete(view.itemID);
-    }
-    let controller = new AbortController();
-    this.abortByItemID.set(view.itemID, controller);
-    sendButton.disabled = true;
-    if (stopButton) {
-      stopButton.disabled = false;
-    }
-    this.setStatus(root, "正在构建文献上下文...");
+    let controller = null;
+    let pendingNode = null;
 
     try {
+      if (appendUser) {
+        history.push({ role: "user", content: question });
+        messagesEl.append(this.messageNode(root.ownerDocument, "user", question));
+      }
+      if (options.input) {
+        options.input.value = "";
+        this.draftByItemID.delete(view.itemID);
+      }
+
+      pendingNode = this.messageNode(root.ownerDocument, "assistant", "正在思考...");
+      pendingNode.classList.add("pending");
+      messagesEl.append(pendingNode);
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+
+      controller = this.createAbortController();
+      if (controller) {
+        this.abortByItemID.set(view.itemID, controller);
+      }
+      if (sendButton) {
+        sendButton.disabled = true;
+      }
+      if (stopButton) {
+        stopButton.disabled = !controller;
+      }
+      this.setStatus(root, "正在构建文献上下文...");
+
       let paperContext = await this.buildPaperContext(view.item, view.attachment, question);
       this.contextInfoByItemID.set(view.itemID, paperContext.info);
       this.contextTextByItemID.set(view.itemID, paperContext.text);
@@ -513,10 +526,20 @@ var ReaderAI = {
       ];
 
       this.setStatus(root, "正在调用模型...");
-      let answer = await this.callModel(requestMessages, { signal: controller.signal });
+      if (pendingNode?.isConnected) {
+        pendingNode.replaceChildren();
+        this.renderAssistantText(pendingNode, "正在等待模型返回...");
+      }
+      let answer = await this.callModel(requestMessages, { signal: controller?.signal });
       history.push({ role: "assistant", content: answer });
       this.historyByItemID.set(view.itemID, history);
-      messagesEl.append(this.messageNode(root.ownerDocument, "assistant", answer));
+      let answerNode = this.messageNode(root.ownerDocument, "assistant", answer);
+      if (pendingNode?.isConnected) {
+        pendingNode.replaceWith(answerNode);
+      }
+      else {
+        messagesEl.append(answerNode);
+      }
       messagesEl.append(this.followupNode(root.ownerDocument, view, question, answer, paperContext.info));
       messagesEl.scrollTop = messagesEl.scrollHeight;
       this.updateContextPanel(root, paperContext.info);
@@ -525,21 +548,37 @@ var ReaderAI = {
     catch (error) {
       if (this.isAbortError(error)) {
         let stopped = "请求已停止。";
-        messagesEl.append(this.messageNode(root.ownerDocument, "system", stopped));
+        let stoppedNode = this.messageNode(root.ownerDocument, "system", stopped);
+        if (pendingNode?.isConnected) {
+          pendingNode.replaceWith(stoppedNode);
+        }
+        else {
+          messagesEl.append(stoppedNode);
+        }
         this.setStatus(root, stopped);
         return;
       }
-      let text = `Error: ${error.message || error}`;
+      let text = this.describeRuntimeError(error);
       history.push({ role: "assistant", content: text });
-      messagesEl.append(this.messageNode(root.ownerDocument, "assistant", text));
+      let errorNode = this.messageNode(root.ownerDocument, "assistant", text);
+      errorNode.classList.add("error");
+      if (pendingNode?.isConnected) {
+        pendingNode.replaceWith(errorNode);
+      }
+      else {
+        messagesEl.append(errorNode);
+      }
+      messagesEl.scrollTop = messagesEl.scrollHeight;
       this.setStatus(root, text);
       this.logError(error);
     }
     finally {
-      if (this.abortByItemID.get(view.itemID) == controller) {
+      if (controller && this.abortByItemID.get(view.itemID) == controller) {
         this.abortByItemID.delete(view.itemID);
       }
-      sendButton.disabled = false;
+      if (sendButton) {
+        sendButton.disabled = false;
+      }
       if (stopButton) {
         stopButton.disabled = true;
       }
@@ -566,6 +605,16 @@ var ReaderAI = {
 
   isAbortError(error) {
     return error?.name == "AbortError" || /abort|stopped/i.test(error?.message || "");
+  },
+
+  createAbortController() {
+    try {
+      return typeof AbortController == "function" ? new AbortController() : null;
+    }
+    catch (error) {
+      this.logError(error);
+      return null;
+    }
   },
 
   followupNode(doc, view, question, answer, info) {
@@ -1146,7 +1195,7 @@ var ReaderAI = {
       };
     }
 
-    let response = await fetch(endpoint, {
+    let response = await this.fetchWithTimeout(endpoint, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -1159,7 +1208,7 @@ var ReaderAI = {
     let text = await response.text();
     if (!response.ok && apiType == "responses" && /temperature/i.test(text)) {
       delete payload.temperature;
-      response = await fetch(endpoint, {
+      response = await this.fetchWithTimeout(endpoint, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -1193,6 +1242,55 @@ var ReaderAI = {
       throw new Error(this.describeEmptyModelResponse({ endpoint, apiType, model, text }));
     }
     return content;
+  },
+
+  async fetchWithTimeout(endpoint, init, timeoutMs = 90000) {
+    if (typeof fetch != "function") {
+      throw new Error("当前 Zotero 环境没有可用的 fetch，无法发送 API 请求。请升级 Zotero 或反馈这个排障信息。");
+    }
+
+    if (typeof AbortController != "function") {
+      return Promise.race([
+        fetch(endpoint, init),
+        new Promise((_, reject) => {
+          setTimeout(() => reject(new Error(`模型请求超过 ${Math.round(timeoutMs / 1000)} 秒没有返回。请检查网络、API 地址或服务商状态。`)), timeoutMs);
+        }),
+      ]);
+    }
+
+    let externalSignal = init?.signal;
+    let controller = new AbortController();
+    let timedOut = false;
+    let timer = setTimeout(() => {
+      timedOut = true;
+      controller.abort();
+    }, timeoutMs);
+    let abortFromExternal = () => controller.abort();
+
+    if (externalSignal) {
+      if (externalSignal.aborted) {
+        controller.abort();
+      }
+      else {
+        externalSignal.addEventListener("abort", abortFromExternal, { once: true });
+      }
+    }
+
+    try {
+      return await fetch(endpoint, { ...init, signal: controller.signal });
+    }
+    catch (error) {
+      if (timedOut && this.isAbortError(error)) {
+        throw new Error(`模型请求超过 ${Math.round(timeoutMs / 1000)} 秒没有返回。请检查网络、API 地址或服务商状态。`);
+      }
+      throw error;
+    }
+    finally {
+      clearTimeout(timer);
+      if (externalSignal?.removeEventListener) {
+        externalSignal.removeEventListener("abort", abortFromExternal);
+      }
+    }
   },
 
   buildResponsesPayload(model, messages) {
@@ -1259,6 +1357,27 @@ var ReaderAI = {
       `Model: ${model}`,
       `Raw response: ${this.trimTo(this.plainText(text), 1000)}`,
     ].join("\n");
+  },
+
+  describeRuntimeError(error) {
+    let message = error?.message || String(error);
+    if (/Please configure API Key/i.test(message)) {
+      return "还没有配置 API 密钥。请打开“设置”，填入 API 密钥后点击“保存设置”，再点“测试模型”。";
+    }
+    if (/Please configure Base URL and Model/i.test(message)) {
+      return "还没有配置 API 地址或模型。请打开“设置”，填好 API 地址、接口类型和模型后保存。";
+    }
+    if (/Failed to fetch|NetworkError|Load failed|Network request failed|ECONN|ENOTFOUND|ETIMEDOUT|timed out|超过 \d+ 秒/i.test(message)) {
+      return [
+        "模型请求没有成功返回。",
+        message,
+        "请先在“设置”里点“测试模型”。如果测试也失败，优先检查 API 地址、接口类型、网络代理和服务商状态。",
+      ].join("\n");
+    }
+    if (/Provider error|Provider returned/i.test(message)) {
+      return message;
+    }
+    return `发生错误：${message}\n\n请打开“设置”点“复制排障信息”，把不含密钥的内容发给我继续定位。`;
   },
 
   extractChatText(json) {
@@ -1543,8 +1662,32 @@ var ReaderAI = {
     button.className = "reader-ai-button" + (variant ? ` ${variant}` : "");
     button.type = "button";
     button.textContent = label;
-    button.addEventListener("click", onClick);
+    button.addEventListener("click", event => {
+      try {
+        let result = onClick?.(event);
+        if (result?.catch) {
+          result.catch(error => this.reportButtonError(button, error));
+        }
+      }
+      catch (error) {
+        this.reportButtonError(button, error);
+      }
+    });
     return button;
+  },
+
+  reportButtonError(button, error) {
+    this.logError(error);
+    let root = button.closest?.(".reader-ai-root");
+    let text = this.describeRuntimeError(error);
+    this.setStatus(root || button, text);
+    let messages = root?.querySelector?.(".reader-ai-messages");
+    if (messages) {
+      let node = this.messageNode(button.ownerDocument, "assistant", text);
+      node.classList.add("error");
+      messages.append(node);
+      messages.scrollTop = messages.scrollHeight;
+    }
   },
 
   field(doc, labelText, id, value, type = "text") {

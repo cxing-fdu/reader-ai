@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.1
+
+- Fixes a chat-send failure mode where the user message could appear without any visible assistant response.
+- Adds an in-chat thinking placeholder while Reader AI builds context and waits for the provider.
+- Adds clearer Chinese diagnostics for setup, network, provider, and timeout failures.
+- Adds a 90-second model request timeout so stalled provider calls no longer leave the chat looking frozen.
+
 ## 0.1.0
 
 - Initial public GitHub release.

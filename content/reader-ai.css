@@ -74,6 +74,18 @@
   border: 1px solid #c5e7db;
 }
 
+.reader-ai-message.assistant.pending {
+  color: #57606a;
+  background: #f6f8fa;
+  border-color: #d0d7de;
+}
+
+.reader-ai-message.assistant.error {
+  color: #5f1d1d;
+  background: #fff1f1;
+  border-color: #ffb4b4;
+}
+
 .reader-ai-message.system {
   max-width: 100%;
   color: #57606a;
