@@ -1205,7 +1205,6 @@ var ReaderAI = {
     };
 
     let response = await this.requestProvider(endpoint, request);
-
     let text = response.text;
     if (!response.ok && apiType == "responses" && /temperature/i.test(text)) {
       delete payload.temperature;
@@ -1218,9 +1217,35 @@ var ReaderAI = {
       json = JSON.parse(text);
     }
     catch (error) {}
+
+    if (apiType == "responses" && this.isResponsesListInputError(json, text)) {
+      payload = this.buildResponsesPayload(model, messages, { inputFormat: "list" });
+      request.body = JSON.stringify(payload);
+      response = await this.requestProvider(endpoint, request);
+      text = response.text;
+      try {
+        json = JSON.parse(text);
+      }
+      catch (error) {
+        json = null;
+      }
+    }
+
+    let envelopeError = this.responseEnvelopeError(json, text);
     if (!response.ok) {
       throw new Error(this.describeAPIError({
         status: response.status,
+        statusText: response.statusText,
+        endpoint,
+        apiType,
+        model,
+        json,
+        text,
+      }));
+    }
+    if (envelopeError) {
+      throw new Error(this.describeAPIError({
+        status: envelopeError.status || response.status,
         statusText: response.statusText,
         endpoint,
         apiType,
@@ -1365,15 +1390,20 @@ var ReaderAI = {
     }
   },
 
-  buildResponsesPayload(model, messages) {
+  buildResponsesPayload(model, messages, options = {}) {
     let system = messages
       .filter(message => message.role == "system")
       .map(message => message.content)
       .join("\n\n");
-    let input = messages
-      .filter(message => message.role != "system")
-      .map(message => `${message.role == "assistant" ? "Assistant" : "User"}:\n${message.content}`)
-      .join("\n\n");
+    let dialogue = messages.filter(message => message.role != "system");
+    let input = options.inputFormat == "list"
+      ? dialogue.map(message => ({
+        role: message.role == "assistant" ? "assistant" : "user",
+        content: String(message.content || ""),
+      }))
+      : dialogue
+        .map(message => `${message.role == "assistant" ? "Assistant" : "User"}:\n${message.content}`)
+        .join("\n\n");
 
     let payload = {
       model,
@@ -1387,8 +1417,29 @@ var ReaderAI = {
     return payload;
   },
 
+  isResponsesListInputError(json, text) {
+    return /input must be a list/i.test(this.responseErrorText(json, text));
+  },
+
+  responseEnvelopeError(json, text) {
+    let message = this.responseErrorText(json, text);
+    if (!message) {
+      return null;
+    }
+    let statusMatch = message.match(/(?:status|status code|状态码)[:：]?\s*(\d{3})/i);
+    let status = statusMatch ? Number(statusMatch[1]) : 0;
+    if (json?.error || status >= 400 || /请求失败|request failed|bad request|unauthorized|forbidden|invalid|error/i.test(message)) {
+      return { status, message };
+    }
+    return null;
+  },
+
+  responseErrorText(json, text) {
+    return String(json?.error?.message || json?.detail || json?.message || text || "");
+  },
+
   describeAPIError({ status, statusText, endpoint, apiType, model, json, text }) {
-    let message = json?.error?.message || json?.message || text || statusText || `HTTP ${status}`;
+    let message = this.responseErrorText(json, text) || statusText || `HTTP ${status}`;
     message = this.trimTo(this.plainText(message), 1000);
     let lower = message.toLowerCase();
     let hints = [];

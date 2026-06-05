@@ -81,6 +81,9 @@ const diagnostic = ReaderAI.describeAPIError({
   text: "",
 });
 assert(diagnostic.includes("Model: unavailable-model"), "Provider diagnostic smoke test failed");
+assert(ReaderAI.isResponsesListInputError({ detail: "Input must be a list" }, ""), "Responses list-input detection smoke test failed");
+const envelope = ReaderAI.responseEnvelopeError({ detail: "upstream failed, status: 400, Input must be a list" }, "");
+assert(envelope?.status === 400, "Provider envelope error smoke test failed");
 
 ReaderAI.pluginID = "reader-ai@test";
 ReaderAI.pref = key => ({
@@ -92,6 +95,12 @@ ReaderAI.pref = key => ({
   maxContextChars: "24000",
   temperature: "0.2",
 }[key] || "");
+const listPayload = ReaderAI.buildResponsesPayload("example-model", [
+  { role: "system", content: "system" },
+  { role: "user", content: "hello" },
+], { inputFormat: "list" });
+assert(Array.isArray(listPayload.input), "Responses list payload smoke test failed");
+assert(listPayload.input[0].role === "user", "Responses list payload role smoke test failed");
 const debugReport = ReaderAI.debugReport(null);
 assert(debugReport.includes("API Key configured: yes"), "Debug report key status smoke test failed");
 assert(!debugReport.includes("TEST_PLACEHOLDER_VALUE"), "Debug report leaked API key");

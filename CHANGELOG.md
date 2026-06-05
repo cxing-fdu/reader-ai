@@ -4,6 +4,8 @@
 
 - Uses Zotero's native HTTP request API before falling back to browser `fetch`, improving compatibility with Zotero's plugin network environment.
 - Improves diagnostics for network-layer failures that appear as `NetworkError when attempting to fetch resource`.
+- Retries Responses requests with list-style input when a provider rejects string input with `Input must be a list`.
+- Detects provider error envelopes returned inside successful HTTP responses.
 
 ## 0.1.1
 
